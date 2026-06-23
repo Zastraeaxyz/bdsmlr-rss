@@ -120,6 +120,14 @@ details summary {
   color: var(--accent);
 }
 
+.auth-check {
+  display: inline-block;
+  margin-left: 6px;
+  color: #3fb950;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
 details p {
   margin: 0.5rem 0;
   font-size: 0.85rem;

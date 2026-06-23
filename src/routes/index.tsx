@@ -1,5 +1,6 @@
 import { Title } from '@solidjs/meta'
-import { createSignal, createResource, Show, For } from 'solid-js'
+import { createSignal, createResource, Show, For, createEffect, onMount } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import type { Blog, Post } from '~/lib/api'
 import { PostCard } from '~/components/PostCard'
 
@@ -9,11 +10,38 @@ interface PreviewResult {
   page: number
 }
 
+const LS_KEY = 'bdsmlr-rss-v2-session'
+
+function loadSession(): string {
+  if (isServer) return ''
+  return localStorage.getItem(LS_KEY) || ''
+}
+
+function saveSession(val: string) {
+  if (isServer) return
+  if (val) {
+    localStorage.setItem(LS_KEY, val)
+  } else {
+    localStorage.removeItem(LS_KEY)
+  }
+}
+
 export default function Home() {
   const [username, setUsername] = createSignal('')
   const [v2session, setV2session] = createSignal('')
   const [page, setPage] = createSignal(1)
+  const [hydrated, setHydrated] = createSignal(false)
   const [fetchParams, setFetchParams] = createSignal<{ u: string; s: string; p: number } | null>(null)
+
+  onMount(() => {
+    setV2session(loadSession())
+    setHydrated(true)
+  })
+
+  createEffect(() => {
+    if (!hydrated()) return
+    saveSession(v2session().trim())
+  })
 
   const [preview] = createResource(fetchParams, async (params) => {
     if (!params.u) return null
@@ -58,7 +86,12 @@ export default function Home() {
         />
 
         <details>
-          <summary>Authentication (optional)</summary>
+          <summary>
+            Authentication (optional)
+            <Show when={v2session().trim()}>
+              <span class="auth-check">&#x2713;</span>
+            </Show>
+          </summary>
           <p>
             Some blogs require authentication. Paste your <code>v2_session</code> cookie value below.
           </p>
