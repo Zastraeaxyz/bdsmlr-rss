@@ -1,21 +1,15 @@
 import { Title } from "@solidjs/meta";
 import {
   createSignal,
-  createResource,
   Show,
-  For,
   createEffect,
   onMount,
+  lazy,
+  Suspense,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import type { Blog, Post } from "~/lib/api";
-import { PostCard } from "~/components/PostCard";
 
-interface PreviewResult {
-  blog: Blog;
-  posts: Post[];
-  page: number;
-}
+const Preview = lazy(() => import("~/components/Preview"));
 
 const LS_KEY = "bdsmlr-rss-v2-session";
 
@@ -52,18 +46,6 @@ export default function Home() {
   createEffect(() => {
     if (!hydrated()) return;
     saveSession(v2session().trim());
-  });
-
-  const [preview] = createResource(fetchParams, async (params) => {
-    if (!params.u) return null;
-    const qs = new URLSearchParams({
-      username: params.u,
-      page: String(params.p),
-    });
-    if (params.s) qs.set("v2_session", params.s);
-    const res = await fetch(`/api/preview?${qs}`);
-    if (!res.ok) throw new Error("Preview fetch failed");
-    return res.json() as Promise<PreviewResult>;
   });
 
   function handlePreview(e: Event) {
@@ -160,32 +142,9 @@ export default function Home() {
         <button type="submit">Preview</button>
       </form>
 
-      <Show when={preview.loading}>
-        <p>Loading...</p>
-      </Show>
-
-      <Show when={preview.error}>
-        <p class="error">Error: {preview.error.message}</p>
-      </Show>
-
-      <Show when={preview()}>
-        <section>
-          <h2>{preview()!.blog.title || preview()!.blog.name}</h2>
-          <Show when={preview()!.blog.description}>
-            <p>{preview()!.blog.description}</p>
-          </Show>
-
-          <h3>Posts (page {preview()!.page})</h3>
-          <Show when={preview()!.posts.length === 0}>
-            <p>No posts found.</p>
-          </Show>
-          <div class="feed">
-            <For each={preview()!.posts}>
-              {(post) => <PostCard post={post} />}
-            </For>
-          </div>
-        </section>
-      </Show>
+      <Suspense fallback={<p>Loading...</p>}>
+        <Preview fetchParams={fetchParams} />
+      </Suspense>
     </main>
   );
 }
