@@ -154,3 +154,42 @@ export function getPostMediaUrls(post: Post): string[] {
     .map((item) => item.original?.url)
     .filter((url): url is string => !!url)
 }
+
+export interface BlogFeed {
+  blog: Blog
+  posts: Post[]
+  page: number
+}
+
+export async function fetchBlogFeed(params: {
+  username: string
+  page?: number
+  v2session?: string
+}): Promise<BlogFeed> {
+  const page = Math.max(1, params.page || 1)
+  const v2session = params.v2session || undefined
+
+  const resolved = await resolveIdentifier(params.username, v2session)
+  if (!resolved.blogId) {
+    throw new FetchError(resolved.error || 'Blog not found', 404)
+  }
+
+  const [blogData, activity] = await Promise.all([
+    getBlog(resolved.blogId, v2session),
+    listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session),
+  ])
+
+  if (!blogData.blog) {
+    throw new FetchError('Blog not found', 404)
+  }
+
+  return { blog: blogData.blog, posts: activity.posts || [], page }
+}
+
+export class FetchError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
