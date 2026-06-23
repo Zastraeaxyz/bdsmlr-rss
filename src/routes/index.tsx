@@ -1,7 +1,7 @@
 import { Title } from '@solidjs/meta'
 import { createSignal, createResource, Show, For } from 'solid-js'
-import { getPostMediaUrls } from '~/lib/api'
 import type { Blog, Post } from '~/lib/api'
+import { PostCard } from '~/components/PostCard'
 
 interface PreviewResult {
   blog: Blog
@@ -38,51 +38,6 @@ export default function Home() {
     if (page() !== 1) qs.set('page', String(page()))
     const q = qs.toString()
     return `${location.origin}/rss/${u}${q ? '?' + q : ''}`
-  }
-
-  function postSnippet(post: Post): string {
-    if (post.title) return post.title
-    if (post.content?.text) {
-      const t = post.content.text
-      return t.length > 120 ? t.substring(0, 120) + '...' : t
-    }
-    if (post.body) {
-      const b = post.body
-      return b.length > 120 ? b.substring(0, 120) + '...' : b
-    }
-    return '(no text)'
-  }
-
-  function formatDate(ts: number | undefined): string {
-    if (!ts) return ''
-    return new Date(ts * 1000).toLocaleDateString()
-  }
-
-  function PostPreview(props: { post: Post }) {
-    const post = props.post
-    const urls = () => getPostMediaUrls(post)
-    return (
-      <li>
-        <a href={`https://bdsmlr.com/post/${post.id}`} target="_blank" rel="noopener">
-          {postSnippet(post)}
-        </a>
-        <Show when={post.variant === 2 && post.originBlogName}>
-          <span> — reblogged from {post.originBlogName}</span>
-        </Show>
-        <Show when={post.createdAtUnix}>
-          <span class="date"> ({formatDate(post.createdAtUnix)})</span>
-        </Show>
-        <Show when={urls().length > 0}>
-          <div class="media">
-            <For each={urls().slice(0, 3)}>
-              {url => (
-                <img src={url} alt="" loading="lazy" />
-              )}
-            </For>
-          </div>
-        </Show>
-      </li>
-    )
   }
 
   return (
@@ -164,11 +119,11 @@ export default function Home() {
           <Show when={preview()!.posts.length === 0}>
             <p>No posts found.</p>
           </Show>
-          <ol>
+          <div class="feed">
             <For each={preview()!.posts}>
-              {post => <PostPreview post={post} />}
+              {post => <PostCard post={post} />}
             </For>
-          </ol>
+          </div>
         </section>
       </Show>
     </main>

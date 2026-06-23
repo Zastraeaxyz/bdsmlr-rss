@@ -147,14 +147,6 @@ export function listBlogActivity(
   )
 }
 
-export function getPostMediaUrls(post: Post): string[] {
-  const items = post.mediaRepresentation?.items
-  if (!items || items.length === 0) return []
-  return items
-    .map((item) => item.original?.url)
-    .filter((url): url is string => !!url)
-}
-
 export interface BlogFeed {
   blog: Blog
   posts: Post[]

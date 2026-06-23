@@ -1,35 +1,6 @@
 import RSS from 'rss'
 import type { Blog, Post } from './api'
-import { getPostMediaUrls } from './api'
-
-function getMediaType(url: string): 'image' | 'video' {
-  const ext = url.split('?')[0].split('.').pop()?.toLowerCase()
-  if (ext && ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext)) return 'video'
-  return 'image'
-}
-
-function processBodyHtml(html: string, urls: string[]): string {
-  if (!urls || urls.length === 0) return html
-
-  const fileMap = new Map<string, string>()
-  for (const url of urls) {
-    const filename = url.split('/').pop()?.split('?')[0]
-    if (filename) fileMap.set(filename, url)
-  }
-
-  return html.replace(
-    /<img\b[^>]*src\s*=\s*["']([^"']*)["'][^>]*>/gi,
-    (_, src) => {
-      const cdnFilename = src.split('/').pop()?.split('?')[0]
-      const url = (cdnFilename && fileMap.get(cdnFilename)) || src
-      const type = getMediaType(url)
-      if (type === 'video') {
-        return `<video src="${url}" muted controls preload="metadata"></video>`
-      }
-      return `<img src="${url}" alt="" />`
-    },
-  )
-}
+import { getPostMediaUrls, getMediaType, processContentHtml } from './sanitize'
 
 function postDescription(post: Post): string {
   const parts: string[] = []
@@ -39,7 +10,7 @@ function postDescription(post: Post): string {
   let hasMedia = false
 
   if (html) {
-    const processed = processBodyHtml(html, mediaUrls)
+    const processed = processContentHtml(html, mediaUrls)
     hasMedia = /<(?:img|video)\b/i.test(processed)
     parts.push(processed)
   } else if (post.content?.text) {
