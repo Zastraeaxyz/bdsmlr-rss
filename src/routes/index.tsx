@@ -1,4 +1,5 @@
 import { Title } from "@solidjs/meta";
+import { useLocation } from "@solidjs/router";
 import {
   createSignal,
   Show,
@@ -56,6 +57,7 @@ export default function Home() {
   }
 
   function feedUrl() {
+    if (isServer) return;
     const u = username().trim();
     if (!u) return "";
     const qs = new URLSearchParams();
@@ -63,7 +65,7 @@ export default function Home() {
     if (s) qs.set("v2_session", s);
     if (page() !== 1) qs.set("page", String(page()));
     const q = qs.toString();
-    return `${location.origin}/rss/${u}${q ? "?" + q : ""}`;
+    return `${window.location.origin}/rss/${u}${q ? "?" + q : ""}`;
   }
 
   function copyUrl() {
