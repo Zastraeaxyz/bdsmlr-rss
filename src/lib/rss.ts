@@ -1,60 +1,80 @@
+import RSS from 'rss'
 import type { Blog, Post } from './api'
 import { getPostMediaUrls } from './api'
 
-function escapeXml(s: string | undefined | null): string {
-  if (!s) return ''
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
+function getMediaType(url: string): 'image' | 'video' {
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase()
+  if (ext && ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext)) return 'video'
+  return 'image'
 }
 
-function toRfc822(ts: number | undefined): string {
-  if (!ts) return ''
-  return new Date(ts * 1000).toUTCString()
+function processBodyHtml(html: string, urls: string[]): string {
+  if (!urls || urls.length === 0) return html
+
+  const fileMap = new Map<string, string>()
+  for (const url of urls) {
+    const filename = url.split('/').pop()?.split('?')[0]
+    if (filename) fileMap.set(filename, url)
+  }
+
+  return html.replace(
+    /<img\b[^>]*src\s*=\s*["']([^"']*)["'][^>]*>/gi,
+    (_, src) => {
+      const cdnFilename = src.split('/').pop()?.split('?')[0]
+      const url = (cdnFilename && fileMap.get(cdnFilename)) || src
+      const type = getMediaType(url)
+      if (type === 'video') {
+        return `<video src="${url}" muted controls preload="metadata"></video>`
+      }
+      return `<img src="${url}" alt="" />`
+    },
+  )
 }
 
 function postDescription(post: Post): string {
   const parts: string[] = []
 
   const html = post.content?.html
+  const mediaUrls = getPostMediaUrls(post)
+
   if (html) {
-    const urls = getPostMediaUrls(post)
-    if (urls.length > 0) {
-      let body = html
-      for (const url of urls) {
-        const filename = url.split('/').pop()?.split('?')[0]
-        if (filename) {
-          body = body.replace(
-            new RegExp(`<img[^>]*src\\s*=\\s*["'][^"']*${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^"']*["'][^>]*>`, 'gi'),
-            `<img src="${escapeXml(url)}" alt="" />`,
-          )
-        }
-      }
-      parts.push(body)
-    } else {
-      parts.push(html)
-    }
+    parts.push(processBodyHtml(html, mediaUrls))
   } else if (post.content?.text) {
-    parts.push(`<p>${escapeXml(post.content.text)}</p>`)
+    parts.push(`<p>${post.content.text}</p>`)
   }
 
   const text = post.body
   if (text && !html) {
-    parts.push(`<p>${escapeXml(text)}</p>`)
+    parts.push(`<p>${text}</p>`)
   }
 
   if (post.variant === 2 && post.originBlogName) {
-    parts.push(`<p><em>Reblogged from ${escapeXml(post.originBlogName)}</em></p>`)
+    parts.push(`<p><em>Reblogged from ${post.originBlogName}</em></p>`)
   }
 
   if (post.tags && post.tags.length > 0) {
-    parts.push('<p>' + post.tags.map(t => `<a href="https://bdsmlr.com/tagged/${escapeXml(t)}">#${escapeXml(t)}</a>`).join(' ') + '</p>')
+    parts.push(
+      '<p>' +
+        post.tags
+          .map(
+            (t) =>
+              `<a href="https://bdsmlr.com/tagged/${encodeURIComponent(t)}">#${t}</a>`,
+          )
+          .join(' ') +
+        '</p>',
+    )
   }
 
   return parts.join('\n')
+}
+
+function postTitle(post: Post): string {
+  if (post.title) return post.title
+  const text = post.content?.text || post.body
+  if (text) {
+    return text.length > 80 ? text.substring(0, 80) + '...' : text
+  }
+  return `Post ${post.id}`
 }
 
 interface RssInput {
@@ -64,47 +84,25 @@ interface RssInput {
 }
 
 export function generateRss({ blog, posts, feedUrl }: RssInput): string {
-  const title = blog.title || blog.name
-  const link = `https://bdsmlr.com/blog/${blog.name}`
-  const desc = blog.description || ''
-
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-  xml += '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
-  xml += '<channel>\n'
-  xml += `  <title>${escapeXml(title)}</title>\n`
-  xml += `  <link>${escapeXml(link)}</link>\n`
-  xml += `  <description>${escapeXml(desc)}</description>\n`
-  if (feedUrl) {
-    xml += `  <atom:link href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml"/>\n`
-  }
-  xml += `  <generator>bdsmlr-rss</generator>\n`
+  const feed = new RSS({
+    title: blog.title || blog.name,
+    description: blog.description || '',
+    feed_url: feedUrl,
+    site_url: `https://bdsmlr.com/blog/${blog.name}`,
+    generator: 'bdsmlr-rss',
+  })
 
   for (const post of posts) {
-    const postLink = `https://bdsmlr.com/post/${post.id}`
-    const postTitle = post.title || (post.content?.text
-      ? post.content.text.substring(0, 80) + (post.content.text.length > 80 ? '...' : '')
-      : post.body?.substring(0, 80) + ((post.body?.length ?? 0) > 80 ? '...' : '') || `Post ${post.id}`)
-    const pubDate = toRfc822(post.createdAtUnix)
-
-    xml += '  <item>\n'
-    xml += `    <title>${escapeXml(postTitle)}</title>\n`
-    xml += `    <link>${escapeXml(postLink)}</link>\n`
-    xml += `    <guid isPermaLink="true">${escapeXml(postLink)}</guid>\n`
-    if (pubDate) {
-      xml += `    <pubDate>${pubDate}</pubDate>\n`
-    }
-    const desc = postDescription(post)
-    if (desc) {
-      xml += `    <description>${escapeXml(desc)}</description>\n`
-    }
-    if (post.blogName) {
-      xml += `    <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">${escapeXml(post.blogName)}</dc:creator>\n`
-    }
-    xml += '  </item>\n'
+    feed.item({
+      title: postTitle(post),
+      description: postDescription(post),
+      url: `https://bdsmlr.com/post/${post.id}`,
+      guid: `https://bdsmlr.com/post/${post.id}`,
+      date: post.createdAtUnix ? new Date(post.createdAtUnix * 1000) : new Date(),
+      author: post.blogName,
+      categories: post.tags,
+    })
   }
 
-  xml += '</channel>\n'
-  xml += '</rss>\n'
-
-  return xml
+  return feed.xml({ indent: true })
 }

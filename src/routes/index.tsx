@@ -1,5 +1,6 @@
 import { Title } from '@solidjs/meta'
 import { createSignal, createResource, Show, For } from 'solid-js'
+import { getPostMediaUrls } from '~/lib/api'
 import type { Blog, Post } from '~/lib/api'
 
 interface PreviewResult {
@@ -57,6 +58,33 @@ export default function Home() {
     return new Date(ts * 1000).toLocaleDateString()
   }
 
+  function PostPreview(props: { post: Post }) {
+    const post = props.post
+    const urls = () => getPostMediaUrls(post)
+    return (
+      <li>
+        <a href={`https://bdsmlr.com/post/${post.id}`} target="_blank" rel="noopener">
+          {postSnippet(post)}
+        </a>
+        <Show when={post.variant === 2 && post.originBlogName}>
+          <span> — reblogged from {post.originBlogName}</span>
+        </Show>
+        <Show when={post.createdAtUnix}>
+          <span class="date"> ({formatDate(post.createdAtUnix)})</span>
+        </Show>
+        <Show when={urls().length > 0}>
+          <div class="media">
+            <For each={urls().slice(0, 3)}>
+              {url => (
+                <img src={url} alt="" loading="lazy" />
+              )}
+            </For>
+          </div>
+        </Show>
+      </li>
+    )
+  }
+
   return (
     <main>
       <Title>BDSMLR RSS</Title>
@@ -103,6 +131,17 @@ export default function Home() {
           onInput={e => setPage(Number(e.currentTarget.value) || 1)}
         />
 
+        <Show when={feedUrl()}>
+          <label for="feedUrl">Feed URL</label>
+          <input
+            id="feedUrl"
+            type="text"
+            readOnly
+            value={feedUrl()}
+            onClick={e => e.currentTarget.select()}
+          />
+        </Show>
+
         <button type="submit">Preview</button>
       </form>
 
@@ -116,17 +155,6 @@ export default function Home() {
 
       <Show when={preview()}>
         <section>
-          <h2>Feed URL</h2>
-          <input
-            type="text"
-            readOnly
-            value={feedUrl()}
-            onClick={e => e.currentTarget.select()}
-          />
-          <p>Copy this URL into your RSS reader.</p>
-        </section>
-
-        <section>
           <h2>{preview()!.blog.title || preview()!.blog.name}</h2>
           <Show when={preview()!.blog.description}>
             <p>{preview()!.blog.description}</p>
@@ -138,19 +166,7 @@ export default function Home() {
           </Show>
           <ol>
             <For each={preview()!.posts}>
-              {post => (
-                <li>
-                  <a href={`https://bdsmlr.com/post/${post.id}`} target="_blank" rel="noopener">
-                    {postSnippet(post)}
-                  </a>
-                  <Show when={post.variant === 2 && post.originBlogName}>
-                    <span> — reblogged from {post.originBlogName}</span>
-                  </Show>
-                  <Show when={post.createdAtUnix}>
-                    <span class="date"> ({formatDate(post.createdAtUnix)})</span>
-                  </Show>
-                </li>
-              )}
+              {post => <PostPreview post={post} />}
             </For>
           </ol>
         </section>

@@ -149,3 +149,17 @@ li a:hover {
 section {
   margin-top: 1.5rem;
 }
+
+.media {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.media img {
+  max-height: 120px;
+  max-width: 180px;
+  border-radius: 4px;
+  object-fit: cover;
+}
