@@ -36,9 +36,12 @@ function postDescription(post: Post): string {
 
   const html = post.content?.html
   const mediaUrls = getPostMediaUrls(post)
+  let hasMedia = false
 
   if (html) {
-    parts.push(processBodyHtml(html, mediaUrls))
+    const processed = processBodyHtml(html, mediaUrls)
+    hasMedia = /<(?:img|video)\b/i.test(processed)
+    parts.push(processed)
   } else if (post.content?.text) {
     parts.push(`<p>${post.content.text}</p>`)
   }
@@ -46,6 +49,17 @@ function postDescription(post: Post): string {
   const text = post.body
   if (text && !html) {
     parts.push(`<p>${text}</p>`)
+  }
+
+  if (!hasMedia) {
+    for (const url of mediaUrls) {
+      const type = getMediaType(url)
+      if (type === 'video') {
+        parts.push(`<video src="${url}" muted controls preload="metadata"></video>`)
+      } else {
+        parts.push(`<img src="${url}" alt="" />`)
+      }
+    }
   }
 
   if (post.variant === 2 && post.originBlogName) {
