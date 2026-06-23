@@ -304,3 +304,51 @@ section {
   color: var(--text-muted);
   text-decoration: underline;
 }
+
+.copy-row {
+  display: flex;
+  gap: 0;
+}
+
+.copy-row input {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  font-family: monospace;
+  font-size: 0.85rem;
+  transition: border-color 0.2s, box-shadow 0.3s;
+}
+
+.copy-row input.copied {
+  border-color: #3fb950;
+  box-shadow: 0 0 0 2px rgba(63, 185, 80, 0.35);
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: var(--input-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.copy-btn:hover {
+  color: var(--text-heading);
+  background: var(--bg-hover);
+}
+
+.copy-btn .icon {
+  width: 18px;
+  height: 18px;
+  transition: color 0.2s;
+}
+
+.copy-btn:has(.icon path[d*="13.5"]) .icon {
+  color: #3fb950;
+}

@@ -8,6 +8,7 @@ import {
   Suspense,
 } from "solid-js";
 import { isServer } from "solid-js/web";
+import { CheckmarkIcon, CopyIcon } from "~/components/Icons";
 
 const Preview = lazy(() => import("~/components/Preview"));
 
@@ -28,10 +29,11 @@ function saveSession(val: string) {
 }
 
 export default function Home() {
-  const [username, setUsername] = createSignal("");
+  const [username, setUsername] = createSignal("mstara");
   const [v2session, setV2session] = createSignal("");
   const [page, setPage] = createSignal(1);
   const [hydrated, setHydrated] = createSignal(false);
+  const [copied, setCopied] = createSignal(false);
   const [fetchParams, setFetchParams] = createSignal<{
     u: string;
     s: string;
@@ -62,6 +64,14 @@ export default function Home() {
     if (page() !== 1) qs.set("page", String(page()));
     const q = qs.toString();
     return `${location.origin}/rss/${u}${q ? "?" + q : ""}`;
+  }
+
+  function copyUrl() {
+    const url = feedUrl();
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   return (
@@ -128,16 +138,26 @@ export default function Home() {
           onInput={(e) => setPage(Number(e.currentTarget.value) || 1)}
         />
 
-        <Show when={feedUrl()}>
-          <label for="feedUrl">Feed URL</label>
+        <label for="feedUrl">Feed URL</label>
+        <div class="copy-row">
           <input
             id="feedUrl"
             type="text"
             readOnly
             value={feedUrl()}
-            onClick={(e) => e.currentTarget.select()}
+            classList={{ copied: copied() }}
           />
-        </Show>
+          <button
+            type="button"
+            class="copy-btn"
+            onClick={copyUrl}
+            title="Copy to clipboard"
+          >
+            <Show when={!copied()} fallback={<CheckmarkIcon />}>
+              <CopyIcon />
+            </Show>
+          </button>
+        </div>
 
         <button type="submit">Preview</button>
       </form>
