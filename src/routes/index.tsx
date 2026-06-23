@@ -1,87 +1,112 @@
-import { Title } from '@solidjs/meta'
-import { createSignal, createResource, Show, For, createEffect, onMount } from 'solid-js'
-import { isServer } from 'solid-js/web'
-import type { Blog, Post } from '~/lib/api'
-import { PostCard } from '~/components/PostCard'
+import { Title } from "@solidjs/meta";
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  createEffect,
+  onMount,
+} from "solid-js";
+import { isServer } from "solid-js/web";
+import type { Blog, Post } from "~/lib/api";
+import { PostCard } from "~/components/PostCard";
 
 interface PreviewResult {
-  blog: Blog
-  posts: Post[]
-  page: number
+  blog: Blog;
+  posts: Post[];
+  page: number;
 }
 
-const LS_KEY = 'bdsmlr-rss-v2-session'
+const LS_KEY = "bdsmlr-rss-v2-session";
 
 function loadSession(): string {
-  if (isServer) return ''
-  return localStorage.getItem(LS_KEY) || ''
+  if (isServer) return "";
+  return localStorage.getItem(LS_KEY) || "";
 }
 
 function saveSession(val: string) {
-  if (isServer) return
+  if (isServer) return;
   if (val) {
-    localStorage.setItem(LS_KEY, val)
+    localStorage.setItem(LS_KEY, val);
   } else {
-    localStorage.removeItem(LS_KEY)
+    localStorage.removeItem(LS_KEY);
   }
 }
 
 export default function Home() {
-  const [username, setUsername] = createSignal('')
-  const [v2session, setV2session] = createSignal('')
-  const [page, setPage] = createSignal(1)
-  const [hydrated, setHydrated] = createSignal(false)
-  const [fetchParams, setFetchParams] = createSignal<{ u: string; s: string; p: number } | null>(null)
+  const [username, setUsername] = createSignal("");
+  const [v2session, setV2session] = createSignal("");
+  const [page, setPage] = createSignal(1);
+  const [hydrated, setHydrated] = createSignal(false);
+  const [fetchParams, setFetchParams] = createSignal<{
+    u: string;
+    s: string;
+    p: number;
+  } | null>(null);
 
   onMount(() => {
-    setV2session(loadSession())
-    setHydrated(true)
-  })
+    setV2session(loadSession());
+    setHydrated(true);
+  });
 
   createEffect(() => {
-    if (!hydrated()) return
-    saveSession(v2session().trim())
-  })
+    if (!hydrated()) return;
+    saveSession(v2session().trim());
+  });
 
   const [preview] = createResource(fetchParams, async (params) => {
-    if (!params.u) return null
-    const qs = new URLSearchParams({ username: params.u, page: String(params.p) })
-    if (params.s) qs.set('v2_session', params.s)
-    const res = await fetch(`/api/preview?${qs}`)
-    if (!res.ok) throw new Error('Preview fetch failed')
-    return res.json() as Promise<PreviewResult>
-  })
+    if (!params.u) return null;
+    const qs = new URLSearchParams({
+      username: params.u,
+      page: String(params.p),
+    });
+    if (params.s) qs.set("v2_session", params.s);
+    const res = await fetch(`/api/preview?${qs}`);
+    if (!res.ok) throw new Error("Preview fetch failed");
+    return res.json() as Promise<PreviewResult>;
+  });
 
   function handlePreview(e: Event) {
-    e.preventDefault()
-    setFetchParams({ u: username().trim(), s: v2session().trim(), p: page() })
+    e.preventDefault();
+    setFetchParams({ u: username().trim(), s: v2session().trim(), p: page() });
   }
 
   function feedUrl() {
-    const u = username().trim()
-    if (!u) return ''
-    const qs = new URLSearchParams()
-    const s = v2session().trim()
-    if (s) qs.set('v2_session', s)
-    if (page() !== 1) qs.set('page', String(page()))
-    const q = qs.toString()
-    return `${location.origin}/rss/${u}${q ? '?' + q : ''}`
+    const u = username().trim();
+    if (!u) return "";
+    const qs = new URLSearchParams();
+    const s = v2session().trim();
+    if (s) qs.set("v2_session", s);
+    if (page() !== 1) qs.set("page", String(page()));
+    const q = qs.toString();
+    return `${location.origin}/rss/${u}${q ? "?" + q : ""}`;
   }
 
   return (
     <main>
       <Title>BDSMLR RSS</Title>
       <h1>BDSMLR RSS Generator</h1>
-      <p>Generate an RSS feed URL for any BDSMLR blog. Paste the URL into your RSS reader.</p>
+      <p>
+        You may have noticed that images stopped showing up in your BDSMLR RSS
+        Feed. BDSMLR recently changed how it delivers images, so older feeds
+        contain image links that no longer work. Their RSS Feed was not properly
+        updated to use the new image URLs, so your feed contained broken image
+        links. This generator fetches fresh data from BDSMLR, so your feed
+        always has valid, working image links.
+      </p>
+      <p>
+        This app is specifically designed to import BDSMLR blogs into your
+        imaglr account using their RSS Feed Importer.
+      </p>
 
       <form onSubmit={handlePreview}>
         <label for="username">Blog username</label>
         <input
           id="username"
           type="text"
-          placeholder="e.g. thecagestore"
+          placeholder="e.g. mstara"
           value={username()}
-          onInput={e => setUsername(e.currentTarget.value)}
+          onInput={(e) => setUsername(e.currentTarget.value)}
           required
         />
 
@@ -93,12 +118,14 @@ export default function Home() {
             </Show>
           </summary>
           <p>
-            Some blogs require authentication. Paste your <code>v2_session</code> cookie value below.
+            Some blogs require authentication. Paste your{" "}
+            <code>v2_session</code> cookie value below.
           </p>
           <p>
-            To find it: open BDSMLR in your browser, open DevTools (F12),
-            go to <strong>Application</strong> → <strong>Cookies</strong> →
-            select <strong>bdsmlr.com</strong>, then copy the <code>v2_session</code> value.
+            To find it: open BDSMLR in your browser, open DevTools (F12), go to{" "}
+            <strong>Application</strong> → <strong>Cookies</strong> → select{" "}
+            <strong>bdsmlr.com</strong>, then copy the <code>v2_session</code>{" "}
+            value.
           </p>
           <label for="v2session">v2_session cookie</label>
           <input
@@ -106,7 +133,7 @@ export default function Home() {
             type="text"
             placeholder="Paste cookie value here"
             value={v2session()}
-            onInput={e => setV2session(e.currentTarget.value)}
+            onInput={(e) => setV2session(e.currentTarget.value)}
           />
         </details>
 
@@ -116,7 +143,7 @@ export default function Home() {
           type="number"
           min="1"
           value={page()}
-          onInput={e => setPage(Number(e.currentTarget.value) || 1)}
+          onInput={(e) => setPage(Number(e.currentTarget.value) || 1)}
         />
 
         <Show when={feedUrl()}>
@@ -126,7 +153,7 @@ export default function Home() {
             type="text"
             readOnly
             value={feedUrl()}
-            onClick={e => e.currentTarget.select()}
+            onClick={(e) => e.currentTarget.select()}
           />
         </Show>
 
@@ -154,11 +181,11 @@ export default function Home() {
           </Show>
           <div class="feed">
             <For each={preview()!.posts}>
-              {post => <PostCard post={post} />}
+              {(post) => <PostCard post={post} />}
             </For>
           </div>
         </section>
       </Show>
     </main>
-  )
+  );
 }
