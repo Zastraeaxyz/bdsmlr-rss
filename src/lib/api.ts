@@ -81,18 +81,32 @@ async function bdRequest<T>(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (v2session) headers['Cookie'] = `v2_session=${v2session}`
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
+  const start = Date.now()
+  const auth = v2session ? '[auth]' : ''
+  console.log(`[bd] --> POST ${path} ${JSON.stringify(body)} ${auth}`)
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || err.error || `HTTP ${res.status}`)
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    const duration = Date.now() - start
+    console.log(`[bd] <-- POST ${path} ${res.status} ${duration}ms ${auth}`)
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }))
+      throw new Error(err.message || err.error || `HTTP ${res.status}`)
+    }
+
+    return res.json()
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('HTTP ')) throw e
+    const duration = Date.now() - start
+    console.log(`[bd] <-- POST ${path} FAIL ${duration}ms ${auth}`)
+    throw e
   }
-
-  return res.json()
 }
 
 export function resolveIdentifier(blogName: string, v2session?: string) {
