@@ -375,3 +375,36 @@ section {
 .copy-btn:has(.icon path[d*="13.5"]) .icon {
   color: #3fb950;
 }
+
+/* ---- Header & Footer ---- */
+
+.site-header {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.site-header a {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.site-header a:hover {
+  color: var(--accent);
+}
+
+.site-footer {
+  max-width: 640px;
+  margin: 3rem auto 0;
+  padding: 1rem 1rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.site-footer p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
