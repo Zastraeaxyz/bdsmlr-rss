@@ -16,6 +16,7 @@ export async function GET(event: APIEvent) {
       username,
       page: Number(url.searchParams.get('page')) || undefined,
       v2session: url.searchParams.get('v2_session') || undefined,
+      includeReblogs: url.searchParams.get('include_reblogs') === '1',
     })
 
     return new Response(JSON.stringify(feed), {

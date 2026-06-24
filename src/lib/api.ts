@@ -130,6 +130,7 @@ export function listBlogActivity(
   blogName: string,
   page: number,
   v2session?: string,
+  includeReblogs = true,
 ) {
   return bdRequest<ListBlogActivityResponse>(
     '/list-blog-activity',
@@ -139,7 +140,7 @@ export function listBlogActivity(
       sort_field: 1,
       order: 2,
       post_types: [1, 2, 3, 4, 5, 6, 7],
-      activity_kinds: ['post', 'reblog'],
+      activity_kinds: includeReblogs ? ['post', 'reblog'] : ['post'],
       page,
       page_size: 20,
     },
@@ -157,9 +158,11 @@ export async function fetchBlogFeed(params: {
   username: string
   page?: number
   v2session?: string
+  includeReblogs?: boolean
 }): Promise<BlogFeed> {
   const page = Math.max(1, params.page || 1)
   const v2session = params.v2session || undefined
+  const includeReblogs = params.includeReblogs !== false
 
   const resolved = await resolveIdentifier(params.username, v2session)
   if (!resolved.blogId) {
@@ -169,7 +172,7 @@ export async function fetchBlogFeed(params: {
   try {
     const [blogData, activity] = await Promise.all([
       getBlog(resolved.blogId, v2session),
-      listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session),
+      listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session, includeReblogs),
     ])
 
     if (!blogData.blog) {

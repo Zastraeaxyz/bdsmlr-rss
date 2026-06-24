@@ -34,12 +34,14 @@ export default function Home() {
   const [username, setUsername] = createSignal("mstara");
   const [v2session, setV2session] = createSignal("");
   const [page, setPage] = createSignal(1);
+  const [includeReblogs, setIncludeReblogs] = createSignal(false);
   const [hydrated, setHydrated] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
   const [fetchParams, setFetchParams] = createSignal<{
     u: string;
     s: string;
     p: number;
+    r: boolean;
   } | null>(null);
 
   onMount(() => {
@@ -54,7 +56,7 @@ export default function Home() {
 
   function handlePreview(e: Event) {
     e.preventDefault();
-    setFetchParams({ u: username().trim(), s: v2session().trim(), p: page() });
+    setFetchParams({ u: username().trim(), s: v2session().trim(), p: page(), r: includeReblogs() });
   }
 
   function feedUrl() {
@@ -65,6 +67,7 @@ export default function Home() {
     const s = v2session().trim();
     if (s) qs.set("v2_session", s);
     if (page() !== 1) qs.set("page", String(page()));
+    if (includeReblogs()) qs.set("include_reblogs", "1");
     const q = qs.toString();
     return `${window.location.origin}/rss/${u}${q ? "?" + q : ""}`;
   }
@@ -145,6 +148,15 @@ export default function Home() {
           value={page()}
           onInput={(e) => setPage(Number(e.currentTarget.value) || 1)}
         />
+
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            checked={includeReblogs()}
+            onChange={(e) => setIncludeReblogs(e.currentTarget.checked)}
+          />
+          include reblogs
+        </label>
 
         <label for="feedUrl">Feed URL</label>
         <div class="copy-row">

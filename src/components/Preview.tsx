@@ -12,6 +12,7 @@ interface Params {
   u: string
   s: string
   p: number
+  r: boolean
 }
 
 export default function Preview(props: { fetchParams: () => Params | null }) {
@@ -19,6 +20,7 @@ export default function Preview(props: { fetchParams: () => Params | null }) {
     if (!params.u) return null
     const qs = new URLSearchParams({ username: params.u, page: String(params.p) })
     if (params.s) qs.set('v2_session', params.s)
+    if (params.r) qs.set('include_reblogs', '1')
     const res = await fetch(`/api/preview?${qs}`)
     if (!res.ok) throw new Error('Preview fetch failed')
     return res.json() as Promise<PreviewResult>
