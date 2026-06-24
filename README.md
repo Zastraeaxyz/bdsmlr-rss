@@ -1,32 +1,39 @@
-# SolidStart
+# BDSMLR RSS Generator
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+A proxy RSS generator for BDSMLR blogs that fixes broken image feeds. BDSMLR recently changed how it delivers images, so older feeds contain image links that no longer work. This tool fetches fresh data from BDSMLR's API and generates RSS with valid, working image links.
 
-## Creating a project
+Primarily designed for importing BDSMLR blogs into imaglr via RSS Feed Importer.
 
-```bash
-# create a new project in the current directory
-npm init solid@latest
+**[Try it here →](https://bdsmlr-rss.up.railway.app)**
 
-# create a new project in my-app
-npm init solid@latest my-app
-```
+## Usage
 
-## Developing
+1. Enter a BDSMLR blog username
+2. Optionally set authentication for private blogs (see below)
+3. Preview the feed
+4. Copy the generated RSS URL and paste it into your feed reader or imaglr's RSS importer
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Private blogs
 
-```bash
-npm run dev
+Some blogs require authentication. To access them:
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+1. Log into BDSMLR in your browser
+2. Open DevTools (F12) → Application → Cookies → bdsmlr.com
+3. Copy the value of `v2_session`
+4. Paste it into the **Authentication** section on the generator page
 
-## Building
+The token is used only for authenticating requests to BDSMLR's API and is never stored or logged by this service.
 
-Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+## How it works
 
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+BDSMLR previously served images via unsigned S3 URLs. They have since moved to signed URLs, but their official RSS feeds still output the old unsigned file paths. Since S3 now rejects unsigned requests, images in the official feeds fail to render.
 
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+This app bypasses the broken official RSS and calls BDSMLR's JSON API directly, which returns the correct signed media URLs. It then generates standards-compliant RSS 2.0 feeds including both standard `<enclosure>` elements and Yahoo Media RSS `<media:content>` elements with the working URLs.
+
+## Privacy
+
+No data is collected. Queries are not tied to the tokens used for viewing private blogs. The `v2_session` parameter is stripped from server logs.
+
+## License
+
+MIT
