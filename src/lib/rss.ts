@@ -1,6 +1,6 @@
 import RSS from 'rss'
 import type { Blog, Post } from './api'
-import { getPostMediaUrls, getMediaType, processContentHtml } from './sanitize'
+import { getPostMediaUrls, getMediaType } from './sanitize'
 
 function getMimeType(url: string): string {
   const ext = url.split('?')[0].split('.').pop()?.toLowerCase()
@@ -44,14 +44,10 @@ function getMimeType(url: string): string {
 function postDescription(post: Post): string {
   const parts: string[] = []
 
-  const html = post.content?.html
-  const mediaUrls = getPostMediaUrls(post)
-  let hasMedia = false
+  const html = post.content?.html ? post.content.html.replace(/<(?:img|video)\b[^>]*>/gi, '') : undefined
 
   if (html) {
-    const processed = processContentHtml(html, mediaUrls)
-    hasMedia = /<(?:img|video)\b/i.test(processed)
-    parts.push(processed)
+    parts.push(html)
   } else if (post.content?.text) {
     parts.push(`<p>${post.content.text}</p>`)
   }
@@ -59,17 +55,6 @@ function postDescription(post: Post): string {
   const text = post.body
   if (text && !html) {
     parts.push(`<p>${text}</p>`)
-  }
-
-  if (!hasMedia) {
-    for (const url of mediaUrls) {
-      const type = getMediaType(url)
-      if (type === 'video') {
-        parts.push(`<video src="${url}" muted controls preload="metadata"></video>`)
-      } else {
-        parts.push(`<img src="${url}" alt="" />`)
-      }
-    }
   }
 
   if (post.variant === 2 && post.originBlogName) {
