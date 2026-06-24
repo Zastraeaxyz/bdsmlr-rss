@@ -1,5 +1,9 @@
 const API_BASE = 'https://api-prod.bdsmlr.com/v2/api'
 
+import { db } from '~/db/sqlite'
+import { resolvedBlogs, pageTokens } from '~/db/schema'
+import { eq, and } from 'drizzle-orm'
+
 export interface PostContent {
   html?: string
   text?: string
@@ -131,7 +135,12 @@ export function listBlogActivity(
   page: number,
   v2session?: string,
   includeReblogs = true,
+  pageToken?: string,
 ) {
+  const pageParam = pageToken
+    ? { page_size: 20, page_token: pageToken }
+    : page
+
   return bdRequest<ListBlogActivityResponse>(
     '/list-blog-activity',
     {
@@ -141,11 +150,69 @@ export function listBlogActivity(
       order: 2,
       post_types: [1, 2, 3, 4, 5, 6, 7],
       activity_kinds: includeReblogs ? ['post', 'reblog'] : ['post'],
-      page,
+      page: pageParam,
       page_size: 20,
     },
     v2session,
   )
+}
+
+function nowISO(): string {
+  return new Date().toISOString()
+}
+
+export async function cachedResolveIdentifier(
+  blogName: string,
+  v2session?: string,
+): Promise<ResolveIdentifierResponse> {
+  const key = blogName.trim().toLowerCase()
+
+  const cached = await db.query.resolvedBlogs.findFirst({
+    where: eq(resolvedBlogs.blogName, key),
+  })
+
+  if (cached) {
+    return JSON.parse(cached.responseJson) as ResolveIdentifierResponse
+  }
+
+  const result = await resolveIdentifier(blogName, v2session)
+
+  await db.insert(resolvedBlogs).values({
+    blogName: key,
+    responseJson: JSON.stringify(result),
+    createdAt: nowISO(),
+  }).onConflictDoUpdate({
+    target: resolvedBlogs.blogName,
+    set: { responseJson: JSON.stringify(result), createdAt: nowISO() },
+  })
+
+  return result
+}
+
+export async function getPageToken(
+  blogId: number,
+  page: number,
+): Promise<string | null> {
+  const row = await db.query.pageTokens.findFirst({
+    where: and(eq(pageTokens.blogId, blogId), eq(pageTokens.page, page)),
+  })
+  return row?.pageToken ?? null
+}
+
+export async function setPageToken(
+  blogId: number,
+  page: number,
+  token: string,
+): Promise<void> {
+  await db.insert(pageTokens).values({
+    blogId,
+    page,
+    pageToken: token,
+    createdAt: nowISO(),
+  }).onConflictDoUpdate({
+    target: [pageTokens.blogId, pageTokens.page],
+    set: { pageToken: token, createdAt: nowISO() },
+  })
 }
 
 export interface BlogFeed {
@@ -164,15 +231,25 @@ export async function fetchBlogFeed(params: {
   const v2session = params.v2session || undefined
   const includeReblogs = params.includeReblogs !== false
 
-  const resolved = await resolveIdentifier(params.username, v2session)
+  const resolved = await cachedResolveIdentifier(params.username, v2session)
   if (!resolved.blogId) {
     throw new FetchError(`Blog "${params.username}" not found — check the spelling`, 404)
   }
 
+  const blogId = resolved.blogId
+  const pageToken = page > 1 ? (await getPageToken(blogId, page)) ?? undefined : undefined
+
   try {
     const [blogData, activity] = await Promise.all([
-      getBlog(resolved.blogId, v2session),
-      listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session, includeReblogs),
+      getBlog(blogId, v2session),
+      listBlogActivity(
+        blogId,
+        resolved.blogName || params.username,
+        page,
+        v2session,
+        includeReblogs,
+        pageToken,
+      ),
     ])
 
     if (!blogData.blog) {
@@ -180,6 +257,10 @@ export async function fetchBlogFeed(params: {
         `Blog "${params.username}" is private — expand "Authentication" above and paste your v2_session cookie`,
         403,
       )
+    }
+
+    if (activity.page?.nextPageToken) {
+      await setPageToken(blogId, page + 1, activity.page.nextPageToken)
     }
 
     return { blog: blogData.blog, posts: activity.posts || [], page }
