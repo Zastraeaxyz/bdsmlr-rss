@@ -22,7 +22,17 @@ export default function Preview(props: { fetchParams: () => Params | null }) {
     if (params.s) qs.set('v2_session', params.s)
     if (params.r) qs.set('include_reblogs', '1')
     const res = await fetch(`/api/preview?${qs}`)
-    if (!res.ok) throw new Error('Preview fetch failed')
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      if (res.status === 404) {
+        window.alert('Blog not found')
+      } else if (res.status === 403) {
+        window.alert('Blog requires authentication')
+      } else {
+        window.alert(body?.error || 'Preview failed')
+      }
+      return null
+    }
     return res.json() as Promise<PreviewResult>
   })
 
