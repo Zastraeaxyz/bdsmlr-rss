@@ -128,6 +128,29 @@ details summary {
   font-size: 1rem;
 }
 
+.blog-status {
+  display: inline-block;
+  margin-left: 6px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.blog-status.exists {
+  color: #3fb950;
+}
+
+.blog-status.checking {
+  color: var(--text-muted);
+}
+
+.blog-status.private {
+  color: #d29922;
+}
+
+.blog-status.not-found {
+  color: #f85149;
+}
+
 details p {
   margin: 0.5rem 0;
   font-size: 0.85rem;

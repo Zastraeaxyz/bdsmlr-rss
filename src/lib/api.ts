@@ -163,19 +163,30 @@ export async function fetchBlogFeed(params: {
 
   const resolved = await resolveIdentifier(params.username, v2session)
   if (!resolved.blogId) {
-    throw new FetchError(resolved.error || 'Blog not found', 404)
+    throw new FetchError(`Blog "${params.username}" not found — check the spelling`, 404)
   }
 
-  const [blogData, activity] = await Promise.all([
-    getBlog(resolved.blogId, v2session),
-    listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session),
-  ])
+  try {
+    const [blogData, activity] = await Promise.all([
+      getBlog(resolved.blogId, v2session),
+      listBlogActivity(resolved.blogId, resolved.blogName || params.username, page, v2session),
+    ])
 
-  if (!blogData.blog) {
-    throw new FetchError('Blog not found', 404)
+    if (!blogData.blog) {
+      throw new FetchError(
+        `Blog "${params.username}" is private — expand "Authentication" above and paste your v2_session cookie`,
+        403,
+      )
+    }
+
+    return { blog: blogData.blog, posts: activity.posts || [], page }
+  } catch (e) {
+    if (e instanceof FetchError) throw e
+    throw new FetchError(
+      `Blog "${params.username}" is private — expand "Authentication" above and paste your v2_session cookie`,
+      403,
+    )
   }
-
-  return { blog: blogData.blog, posts: activity.posts || [], page }
 }
 
 export class FetchError extends Error {

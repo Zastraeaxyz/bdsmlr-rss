@@ -12,6 +12,7 @@ import { isServer } from "solid-js/web";
 import { CheckmarkIcon, CopyIcon } from "~/components/Icons";
 
 const Preview = lazy(() => import("~/components/Preview"));
+const BlogStatus = lazy(() => import("~/components/BlogStatus"));
 
 const LS_KEY = "bdsmlr-rss-v2-session";
 
@@ -94,7 +95,12 @@ export default function Home() {
       </p>
 
       <form onSubmit={handlePreview}>
-        <label for="username">Blog username</label>
+        <label for="username">
+          Blog username
+          <Suspense>
+            <BlogStatus username={username} v2session={v2session} />
+          </Suspense>
+        </label>
         <input
           id="username"
           type="text"
