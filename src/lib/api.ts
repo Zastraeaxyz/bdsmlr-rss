@@ -157,8 +157,27 @@ export function listBlogActivity(
   );
 }
 
-function nowISO(): string {
-  return new Date().toISOString();
+const RESOLVE_CACHE_TTL = Number(process.env.RESOLVE_CACHE_TTL) || 3600;
+const BLOG_CACHE_TTL = Number(process.env.BLOG_CACHE_TTL) || 86400;
+const PAGE_TOKEN_TTL = Number(process.env.PAGE_TOKEN_TTL) || 1800;
+
+function isFresh(createdAt: string | Date, ttlSeconds: number): boolean {
+  const created =
+    typeof createdAt === "string"
+      ? new Date(createdAt).getTime()
+      : createdAt.getTime();
+  return Date.now() - created < ttlSeconds * 1000;
+}
+
+async function cacheWrite(
+  label: string,
+  fn: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await fn();
+  } catch (e) {
+    console.error(`[cache] write error (${label}):`, e);
+  }
 }
 
 export async function cachedResolveIdentifier(
@@ -167,29 +186,36 @@ export async function cachedResolveIdentifier(
 ): Promise<ResolveIdentifierResponse> {
   const key = blogName.trim().toLowerCase();
 
-  const cached = await db.query.resolvedBlogs.findFirst({
-    where: eq(resolvedBlogs.blogName, key),
-  });
+  try {
+    const cached = await db.query.resolvedBlogs.findFirst({
+      where: eq(resolvedBlogs.blogName, key),
+    });
 
-  console.log(cached);
-
-  if (cached) {
-    return JSON.parse(cached.responseJson) as ResolveIdentifierResponse;
+    if (cached && isFresh(cached.createdAt, RESOLVE_CACHE_TTL)) {
+      return JSON.parse(cached.responseJson) as ResolveIdentifierResponse;
+    }
+  } catch (e) {
+    console.error("[cache] read error (resolve):", e);
   }
 
   const result = await resolveIdentifier(blogName, v2session);
 
-  await db
-    .insert(resolvedBlogs)
-    .values({
-      blogName: key,
-      responseJson: JSON.stringify(result),
-      createdAt: nowISO(),
-    })
-    .onConflictDoUpdate({
-      target: resolvedBlogs.blogName,
-      set: { responseJson: JSON.stringify(result), createdAt: nowISO() },
-    });
+  cacheWrite("resolve", () =>
+    db
+      .insert(resolvedBlogs)
+      .values({
+        blogName: key,
+        responseJson: JSON.stringify(result),
+        createdAt: new Date().toISOString(),
+      })
+      .onConflictDoUpdate({
+        target: resolvedBlogs.blogName,
+        set: {
+          responseJson: JSON.stringify(result),
+          createdAt: new Date().toISOString(),
+        },
+      }),
+  );
 
   return result;
 }
@@ -198,27 +224,36 @@ export async function cachedGetBlog(
   blogId: number,
   v2session?: string,
 ): Promise<GetBlogResponse> {
-  const cached = await db.query.blogs.findFirst({
-    where: eq(blogs.blogId, blogId),
-  });
+  try {
+    const cached = await db.query.blogs.findFirst({
+      where: eq(blogs.blogId, blogId),
+    });
 
-  if (cached) {
-    return JSON.parse(cached.responseJson) as GetBlogResponse;
+    if (cached && isFresh(cached.createdAt, BLOG_CACHE_TTL)) {
+      return JSON.parse(cached.responseJson) as GetBlogResponse;
+    }
+  } catch (e) {
+    console.error("[cache] read error (blog):", e);
   }
 
   const result = await getBlog(blogId, v2session);
 
-  await db
-    .insert(blogs)
-    .values({
-      blogId,
-      responseJson: JSON.stringify(result),
-      createdAt: nowISO(),
-    })
-    .onConflictDoUpdate({
-      target: blogs.blogId,
-      set: { responseJson: JSON.stringify(result), createdAt: nowISO() },
-    });
+  cacheWrite("blog", () =>
+    db
+      .insert(blogs)
+      .values({
+        blogId,
+        responseJson: JSON.stringify(result),
+        createdAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: blogs.blogId,
+        set: {
+          responseJson: JSON.stringify(result),
+          createdAt: new Date(),
+        },
+      }),
+  );
 
   return result;
 }
@@ -227,10 +262,17 @@ export async function getPageToken(
   blogId: number,
   page: number,
 ): Promise<string | null> {
-  const row = await db.query.pageTokens.findFirst({
-    where: and(eq(pageTokens.blogId, blogId), eq(pageTokens.page, page)),
-  });
-  return row?.pageToken ?? null;
+  try {
+    const row = await db.query.pageTokens.findFirst({
+      where: and(eq(pageTokens.blogId, blogId), eq(pageTokens.page, page)),
+    });
+    if (row && isFresh(row.createdAt, PAGE_TOKEN_TTL)) {
+      return row.pageToken;
+    }
+  } catch (e) {
+    console.error("[cache] read error (pageToken):", e);
+  }
+  return null;
 }
 
 export async function setPageToken(
@@ -238,18 +280,20 @@ export async function setPageToken(
   page: number,
   token: string,
 ): Promise<void> {
-  await db
-    .insert(pageTokens)
-    .values({
-      blogId,
-      page,
-      pageToken: token,
-      createdAt: nowISO(),
-    })
-    .onConflictDoUpdate({
-      target: [pageTokens.blogId, pageTokens.page],
-      set: { pageToken: token, createdAt: nowISO() },
-    });
+  cacheWrite("pageToken", () =>
+    db
+      .insert(pageTokens)
+      .values({
+        blogId,
+        page,
+        pageToken: token,
+        createdAt: new Date().toISOString(),
+      })
+      .onConflictDoUpdate({
+        target: [pageTokens.blogId, pageTokens.page],
+        set: { pageToken: token, createdAt: new Date().toISOString() },
+      }),
+  );
 }
 
 export interface BlogFeed {

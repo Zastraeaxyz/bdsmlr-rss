@@ -9,7 +9,7 @@ export const resolvedBlogs = sqliteTable("resolved_blogs", {
 export const blogs = sqliteTable("blogs", {
   blogId: integer("blog_id").primaryKey(),
   responseJson: text("response_json").notNull(),
-  createdAt: text("created_at").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 export const pageTokens = sqliteTable(

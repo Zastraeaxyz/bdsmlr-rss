@@ -31,7 +31,7 @@ function saveSession(val: string) {
 }
 
 export default function Home() {
-  const [username, setUsername] = createSignal("mstara");
+  const [username, setUsername] = createSignal("");
   const [v2session, setV2session] = createSignal("");
   const [page, setPage] = createSignal(1);
   const [includeReblogs, setIncludeReblogs] = createSignal(false);
@@ -56,7 +56,12 @@ export default function Home() {
 
   function handlePreview(e: Event) {
     e.preventDefault();
-    setFetchParams({ u: username().trim(), s: v2session().trim(), p: page(), r: includeReblogs() });
+    setFetchParams({
+      u: username().trim(),
+      s: v2session().trim(),
+      p: page(),
+      r: includeReblogs(),
+    });
   }
 
   function feedUrl() {
