@@ -6,6 +6,12 @@ export const resolvedBlogs = sqliteTable("resolved_blogs", {
   createdAt: text("created_at").notNull(),
 });
 
+export const blogs = sqliteTable("blogs", {
+  blogId: integer("blog_id").primaryKey(),
+  responseJson: text("response_json").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const pageTokens = sqliteTable(
   "page_tokens",
   {
