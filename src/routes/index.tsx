@@ -33,7 +33,6 @@ function saveSession(val: string) {
 export default function Home() {
   const [username, setUsername] = createSignal("");
   const [v2session, setV2session] = createSignal("");
-  const [page, setPage] = createSignal(1);
   const [includeReblogs, setIncludeReblogs] = createSignal(false);
   const [hydrated, setHydrated] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
@@ -59,7 +58,7 @@ export default function Home() {
     setFetchParams({
       u: username().trim(),
       s: v2session().trim(),
-      p: page(),
+      p: 1,
       r: includeReblogs(),
     });
   }
@@ -71,7 +70,6 @@ export default function Home() {
     const qs = new URLSearchParams();
     const s = v2session().trim();
     if (s) qs.set("v2_session", s);
-    if (page() !== 1) qs.set("page", String(page()));
     if (includeReblogs()) qs.set("include_reblogs", "1");
     const q = qs.toString();
     return `${window.location.origin}/rss/${u}${q ? "?" + q : ""}`;
@@ -144,15 +142,6 @@ export default function Home() {
             onInput={(e) => setV2session(e.currentTarget.value)}
           />
         </details>
-
-        <label for="page">Page</label>
-        <input
-          id="page"
-          type="number"
-          min="1"
-          value={page()}
-          onInput={(e) => setPage(Number(e.currentTarget.value) || 1)}
-        />
 
         <label class="checkbox-label">
           <input

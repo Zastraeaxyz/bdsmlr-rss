@@ -1,7 +1,7 @@
 import { Show, For } from 'solid-js'
 import type { Post } from '~/lib/api'
 import { sanitizeHtml, getPostMediaUrls, getMediaType, processContentHtml } from '~/lib/sanitize'
-import { PostType, PostVariant, postTypeLabel, formatRelativeDate } from '~/lib/date'
+import { PostType, PostVariant, formatRelativeDate } from '~/lib/date'
 import { HeartIcon, ChatIcon, ReblogIcon } from './Icons'
 
 export function PostCard(props: { post: Post }) {
@@ -33,7 +33,7 @@ export function PostCard(props: { post: Post }) {
         >
           {post.blogName}
         </a>
-        <span class="feed-card-type">{postTypeLabel(post.type)}</span>
+        <span class="feed-card-type">{post.id}</span>
         <Show when={post.createdAtUnix}>
           <span class="feed-card-time">{formatRelativeDate(post.createdAtUnix)}</span>
         </Show>
