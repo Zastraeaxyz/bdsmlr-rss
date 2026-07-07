@@ -9,6 +9,7 @@ export default createHandler(() => (
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" href="/favicon.ico" />
+          <script defer src="https://umami-production-6edd.up.railway.app/script.js" data-website-id="6cd8142f-a18a-4785-a646-af81c7a283c1"></script>
           {assets}
         </head>
         <body>
